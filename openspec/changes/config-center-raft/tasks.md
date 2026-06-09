@@ -1,14 +1,13 @@
 # Tasks: 基于 Raft 的简化版配置管理中心
 
 > 任务边界说明：每个任务只覆盖其标题所描述的最小闭环，不向外扩展到其他阶段的能力。
+> 任务实现应遵循 Clean Architecture 分层，优先保证实体、用例、适配器、基础设施之间的边界清晰。
 
 ## Phase 1: 基础与底座
 
 - [ ] Task 1.0: 确认 Docker Compose 部署骨架与网络命名
   - 边界：仅定义服务编排、网络名称、端口映射与配置挂载方式。
   - 不包含：应用业务逻辑、页面实现、Raft 业务适配。
-
-## Phase 1: 基础与底座
 
 - [ ] Task 1.1: 初始化项目目录与基础配置
   - 边界：仅完成项目目录、基础配置文件、运行入口和必要的依赖初始化。
@@ -19,7 +18,7 @@
   - 不包含：业务接口、Raft 接入、页面实现。
 
 - [ ] Task 1.3: 定义配置中心的核心数据结构与状态机命令
-  - 边界：仅定义 App / Environment / ConfigGroup / ConfigItem / ConfigVersion / ReleaseRecord / GrayRule / GrayRecord / Subscription / ConfigSnapshot / ChangeEvent 及对应 command。
+  - 边界：仅定义 Entity / UseCase DTO / Command / Event 及其最小字段集合。
   - 不包含：HTTP 接口、前端页面、实际持久化实现、具体业务流程编排。
 
 - [ ] Task 1.4: 定义模型映射与转换层

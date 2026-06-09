@@ -2,17 +2,27 @@
 
 ## 架构概览
 
-系统采用“管理后台 / Go SDK / HTTP API / 业务服务 / Raft 一致性层 / 状态机”的分层结构。
+系统采用 **Clean Architecture** 思路，将业务规则与技术细节分离，核心依赖方向始终保持从外层指向内层，避免业务逻辑直接依赖 HTTP、数据库或 Raft 的具体实现。
+
+整体分层可概括为：
+
+- **实体层（Entities / Domain）**：定义应用、环境、配置分组、配置项、版本、发布、灰度、订阅、事件等核心领域对象与领域规则。
+- **用例层（Use Cases / Application）**：编排创建、更新、发布、回滚、灰度匹配、推送、订阅、恢复等业务流程，负责业务场景的输入输出转换。
+- **接口适配层（Interface Adapters）**：负责 HTTP/API、WebSocket、Go SDK、后台页面、Raft command/event 之间的转换。
+- **基础设施层（Frameworks & Drivers）**：负责 PostgreSQL、Raft 底座、Docker 部署、文件配置、日志等具体实现。
+
+系统采用“管理后台 / Go SDK / HTTP API / 业务用例 / 领域模型 / Raft 一致性层 / 基础设施”的分层结构。
 
 - 管理后台负责配置管理、发布、回滚与集群状态展示。
 - Go SDK 负责客户端拉取配置、订阅变更、更新本地缓存。
-- 业务服务负责应用、环境、配置分组、配置项、版本、发布与灰度逻辑。
+- 业务用例负责应用、环境、配置分组、配置项、版本、发布与灰度逻辑。
 - Raft 一致性层负责配置写操作在多节点间的顺序一致与多数派提交。
-- 状态机负责将已提交的命令应用到配置元数据与发布记录。
+- 领域模型负责保持配置中心核心业务规则与状态约束。
+- 基础设施层负责将已提交的命令落地到 PostgreSQL，并通过状态机将结果写回领域状态。
 
 ## 项目目录结构建议
 
-参考业界常见的 Go 项目分层方式（如 service / repository / transport / domain / internal 分层），本项目建议采用“业务应用层 + 领域层 + 基础设施层 + 集成层 + 独立 Raft 子模块”的结构，避免把 API、业务、持久化和共识实现混在一起。
+参考业界常见的 Go 项目分层方式，并结合 Clean Architecture 的依赖倒置原则，本项目建议采用“实体层 + 用例层 + 接口适配层 + 基础设施层 + 独立 Raft 子模块”的结构，避免把 API、业务、持久化和共识实现混在一起。
 
 建议目录结构如下：
 
@@ -29,17 +39,18 @@ ai-coding-training/
 │   ├── config-center-admin/        # 管理后台启动入口
 │   └── config-center-sdk-demo/     # SDK 联调/示例入口（可选）
 ├── internal/
-│   ├── app/                        # 应用编排层，串联 service/repo/raft
-│   ├── domain/                     # 领域模型、枚举、领域规则
-│   ├── dto/                        # Input / Output / Query / Command / Event DTO
-│   ├── service/                    # 业务服务，负责用例编排与事务边界
-│   ├── repository/                 # PostgreSQL 仓储实现
-│   ├── transport/
+│   ├── entity/                     # 领域实体与领域规则（Entities）
+│   ├── usecase/                    # 用例编排（Use Cases）
+│   ├── adapter/
 │   │   ├── http/                   # HTTP API handlers / middleware / router
-│   │   └── ws/                     # 订阅推送（如采用 WebSocket）
-│   ├── raftadapter/                # 对 raft-stash 的适配与封装
-│   ├── config/                     # 配置读取、环境变量、启动参数
-│   └── observability/              # 日志、指标、追踪（可按需启用）
+│   │   ├── ws/                     # 订阅推送（如采用 WebSocket）
+│   │   └── raft/                   # 业务命令与 Raft command/event 的适配
+│   ├── infra/
+│   │   ├── repository/             # PostgreSQL 仓储实现
+│   │   ├── config/                 # 配置读取、环境变量、启动参数
+│   │   ├── observability/          # 日志、指标、追踪（可按需启用）
+│   │   └── auth/                   # 固定 token + hash 校验等基础鉴权实现
+│   └── app/                        # 应用编排层，串联 usecase/adapter/infra
 ├── pkg/
 │   └── sdk/                        # Go SDK 对外公共包（如需要独立发布）
 ├── migrations/                     # PostgreSQL DDL / migration 脚本
@@ -755,9 +766,23 @@ ai-coding-training/
 - 对外仅暴露必要端口，例如 API 端口、后台端口与数据库映射端口
 
 ### 数据库连接约定
-- 数据库 host、port、user、password、dbname、sslmode 等信息应通过配置文件或环境变量注入
-- 本项目的 PostgreSQL 连接参数应在 `configs/config.yaml` 中集中配置，并在 Docker Compose 中通过环境变量或配置挂载方式传入
-- 配置文件中涉及敏感信息的字段在仓库内应使用示例值或占位符，真实值通过本地环境注入，不应硬编码入文档或代码
+- 数据库 host、port、user、password、dbname、sslmode 等信息应通过配置文件或环境变量注入。
+- 本项目的 PostgreSQL 连接参数应在 `configs/config.yaml` 中集中配置，并在 Docker Compose 中通过环境变量或配置挂载方式传入。
+- 配置文件采用“示例版 + 使用版”双文件模式：`configs/config.example.yaml` 用于提交到仓库，`configs/config.yaml` 用于本地或容器运行时使用。
+- 使用版配置文件应加入 `.gitignore`，避免真实连接信息、token 或密钥被提交到版本库。
+- 配置文件中涉及敏感信息的字段在仓库内应使用示例值或占位符，真实值通过本地环境注入，不应硬编码入文档或代码。
+
+### 管理后台鉴权约定
+- 管理后台采用固定管理员 token 作为最小鉴权方案。
+- 服务端仅保存 token 的 hash 值，不保存明文 token。
+- 请求进入后台时，服务端对输入 token 进行同样的 hash 计算后比对，通过后方可访问管理接口。
+- 该方案仅用于本课题的最小可用鉴权，不引入多用户体系、RBAC 或复杂登录流程。
+
+### 灰度与事件语义冻结
+- 灰度规则优先级固定为：白名单 > 标签 > 比例；同一客户端同时命中多个规则时，仅采用最高优先级规则。
+- 变更事件应包含唯一 `event_id`，客户端以 `event_id` 作为幂等去重主键，`checkpoint` 仅用于补偿拉取游标。
+- `version_id` 使用 UUID 作为精确关联主键，`version_no` 使用 `bigint` 且在分组维度内单调递增，用于展示、排序与事件追踪。
+- `ChangeEvent` 仅负责通知“发生了什么变化”，`ConfigSnapshot` 仅负责提供“当前完整配置视图”，两者职责不得混用。
 
 ## 设计约束
 
