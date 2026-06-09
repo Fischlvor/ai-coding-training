@@ -1,0 +1,20 @@
+app:
+  name: config-center
+  version: dev
+log:
+  level: info
+http:
+  port: 8080
+  use_prefork_mode: false
+postgres:
+  host: postgres
+  port: 5432
+  user: config_center
+  password: config_center_dev
+  dbname: config_center
+  sslmode: disable
+  time_zone: Asia/Shanghai
+  max_idle_conns: 10
+  max_open_conns: 20
+migrate:
+  dir: migrations

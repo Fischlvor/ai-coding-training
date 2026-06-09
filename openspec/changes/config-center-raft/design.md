@@ -19,6 +19,9 @@
 - Raft 一致性层负责配置写操作在多节点间的顺序一致与多数派提交。
 - 领域模型负责保持配置中心核心业务规则与状态约束。
 - 基础设施层负责将已提交的命令落地到 PostgreSQL，并通过状态机将结果写回领域状态。
+- 配置文件统一放置在 `configs/` 目录下，示例版与使用版分别使用 `configs/config.example.yaml` 与 `configs/config.yaml`（或按环境拆分为 `configs/dev.yaml`、`configs/prod.yaml`）。
+- 配置结构体与加载逻辑统一放在 `internal/infra/config/`，由该公共包根据 `APP_ENV` 决定加载哪个配置文件，避免在 `cmd` 中重复判断环境。
+- 迁移入口 `cmd/migrate/main.go` 应通过公共配置加载方法读取数据库连接参数与迁移目录，保持与博客项目相同的“结构体读取配置”风格。
 
 ## 项目目录结构建议
 
@@ -745,7 +748,8 @@ ai-coding-training/
 - 选择 Go 作为统一实现语言，原因是其并发模型适合网络服务和 Raft 集群实现，且便于编写 Go SDK。
 - 选择现有 Raft 课程工程作为一致性底座，原因是可以显著降低共识协议实现风险，将精力集中在配置中心业务。
 - 选择 PostgreSQL 作为统一数据库，原因是其事务能力、约束能力、JSONB 与 UUID 支持都适合配置中心业务建模。
-- 选择 `uuid-ossp` 或 `pgcrypto` 生成 UUID，原因是 PostgreSQL 原生支持 UUID 主键生成，适合分布式场景且避免中心化自增瓶颈。
+- 选择 `pgcrypto` 的 `gen_random_uuid()` 生成 UUID，原因是 PostgreSQL 原生支持 UUID 主键生成，DDL 更简洁，适合分布式场景且避免中心化自增瓶颈。
+- 迁移执行入口建议独立为 `cmd/migrate/main.go`，但不作为 `Task 1.2` 的必做产物；本阶段优先落地迁移 SQL 定义。
 - 选择 HTTP 作为管理接口，原因是简单直观，便于后台与 SDK 调用。
 - 选择 WebSocket 或长连接式订阅作为推送实现，原因是能够满足实时变更通知需求，同时保持实现复杂度可控。
 - 选择纯软件多节点模拟部署，原因是符合课题约束，无需额外硬件器件。

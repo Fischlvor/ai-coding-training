@@ -1,1 +1,3 @@
 .cursor/
+configs/config.yaml
+configs/config.prod.yaml
