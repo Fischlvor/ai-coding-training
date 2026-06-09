@@ -761,15 +761,16 @@ ai-coding-training/
 - Raft 底座：作为源码子目录或子模块随项目一起构建，不单独依赖外部镜像
 
 ### Docker 网络建议
+- 参考现有 `go_blog` 项目的 Docker Compose 分层方式，建议通过基础编排文件加环境覆盖文件的方式组织部署，例如 base / dev / prod 三层。
 - 使用独立的 bridge 网络，例如 `config-center-network`
 - 业务服务、后台、数据库与 Raft 节点应加入同一网络，便于容器间通过服务名互访
 - 对外仅暴露必要端口，例如 API 端口、后台端口与数据库映射端口
 
 ### 数据库连接约定
 - 数据库 host、port、user、password、dbname、sslmode 等信息应通过配置文件或环境变量注入。
-- 本项目的 PostgreSQL 连接参数应在 `configs/config.yaml` 中集中配置，并在 Docker Compose 中通过环境变量或配置挂载方式传入。
-- 配置文件采用“示例版 + 使用版”双文件模式：`configs/config.example.yaml` 用于提交到仓库，`configs/config.yaml` 用于本地或容器运行时使用。
-- 使用版配置文件应加入 `.gitignore`，避免真实连接信息、token 或密钥被提交到版本库。
+- 参考现有 `go_blog` 项目的做法，建议按不同环境拆分配置文件，例如 `configs/dev.yaml`、`configs/prod.yaml`，并保留一个 `configs/config.example.yaml` 作为示例模板。
+- 本项目的 PostgreSQL 连接参数应由对应环境配置文件集中管理，并在 Docker Compose 中通过环境变量或配置挂载方式传入。
+- 配置文件采用“示例版 + 使用版”双文件模式：示例配置提交到仓库，使用版配置用于本地或容器运行时，并加入 `.gitignore`。
 - 配置文件中涉及敏感信息的字段在仓库内应使用示例值或占位符，真实值通过本地环境注入，不应硬编码入文档或代码。
 
 ### 管理后台鉴权约定
