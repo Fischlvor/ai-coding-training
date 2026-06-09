@@ -5,16 +5,18 @@
 
 ## Phase 1: 基础与底座
 
-- [ ] Task 1.0: 确认 Docker Compose 部署骨架与网络命名
-  - 边界：仅定义服务编排、网络名称、端口映射与配置挂载方式。
+- [x] Task 1.0: 确认 Docker Compose 部署骨架与网络命名
+  - 边界：仅确认部署骨架、网络命名、端口映射与配置挂载方式；Raft 节点保留为同一代码、不同配置启动的多实例占位，并优先复用既有基础设施 compose 文件作为外部依赖。
   - 不包含：应用业务逻辑、页面实现、Raft 业务适配。
+  - 说明：数据库等基础设施不在本项目内重复创建，直接参考外部 `docker-compose.base.yml`；本项目仅保留 Raft 节点编排骨架，不展开节点业务实现。Raft 多节点配置遵循同一代码、同一容器内端口、不同配置文件启动的模式，peer 地址优先使用 Docker service-name DNS，示例配置中需明确节点 ID、数据目录、Raft 监听地址与 peer 地址列表。
 
-- [ ] Task 1.1: 初始化项目目录与基础配置
+- [x] Task 1.1: 初始化项目目录与基础配置
   - 边界：仅完成项目目录、基础配置文件、运行入口和必要的依赖初始化。
   - 不包含：业务接口、数据模型、Raft 接入、前端页面。
 
-- [ ] Task 1.2: 设计 PostgreSQL 表结构与约束索引
-  - 边界：仅完成表结构、主键、唯一约束、外键、索引与字段类型定义。
+- [x] Task 1.2: 设计 PostgreSQL 表结构与约束索引
+  - 边界：仅完成表结构、主键、唯一约束、外键、索引与字段类型定义；产物以 migration SQL 为主，数据库内 UUID 默认值采用 `pgcrypto` 的 `gen_random_uuid()`，并补充最小迁移执行入口 `cmd/migrate/main.go` 以便执行初始化 SQL。
+  - 约定：迁移入口配置格式参考 `go_blog/server-blog-v2`，使用 `configs/config.yaml` 与 `configs/config.example.yaml` 两份文件，包含 `app`、`log`、`http`、`postgres`、`migrate` 等分组字段，其中 `postgres` 提供连接信息，`migrate` 提供迁移目录。
   - 不包含：业务接口、Raft 接入、页面实现。
 
 - [ ] Task 1.3: 定义配置中心的核心数据结构与状态机命令
