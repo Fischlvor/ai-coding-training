@@ -19,11 +19,11 @@
   - 约定：迁移入口配置格式参考 `go_blog/server-blog-v2`，使用 `configs/config.yaml` 与 `configs/config.example.yaml` 两份文件，包含 `app`、`log`、`http`、`postgres`、`migrate` 等分组字段，其中 `postgres` 提供连接信息，`migrate` 提供迁移目录。
   - 不包含：业务接口、Raft 接入、页面实现。
 
-- [ ] Task 1.3: 定义配置中心的核心数据结构与状态机命令
+- [x] Task 1.3: 定义配置中心的核心数据结构与状态机命令
   - 边界：仅定义 Entity / UseCase DTO / Command / Event 及其最小字段集合。
   - 不包含：HTTP 接口、前端页面、实际持久化实现、具体业务流程编排。
 
-- [ ] Task 1.4: 定义模型映射与转换层
+- [x] Task 1.4: 定义模型映射与转换层
   - 边界：仅定义 Input / Output / DB / Query / Command / Event 之间的转换规则与映射器接口。
   - 不包含：具体业务 CRUD、数据库访问实现、Raft 提交逻辑。
 

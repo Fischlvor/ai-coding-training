@@ -30,35 +30,87 @@
 建议目录结构如下：
 
 ```text
-ai-coding-training/
-├── openspec/
-│   └── changes/config-center-raft/
-│       ├── proposal.md
-│       ├── specs/
-│       ├── design.md
-│       └── tasks.md
-├── cmd/
-│   ├── config-center-api/          # HTTP API 启动入口
-│   ├── config-center-admin/        # 管理后台启动入口
-│   └── config-center-sdk-demo/     # SDK 联调/示例入口（可选）
-├── internal/
-│   ├── entity/                     # 领域实体与领域规则（Entities）
-│   ├── usecase/                    # 用例编排（Use Cases）
-│   ├── adapter/
-│   │   ├── http/                   # HTTP API handlers / middleware / router
-│   │   ├── ws/                     # 订阅推送（如采用 WebSocket）
-│   │   └── raft/                   # 业务命令与 Raft command/event 的适配
-│   ├── infra/
-│   │   ├── repository/             # PostgreSQL 仓储实现
-│   │   ├── config/                 # 配置读取、环境变量、启动参数
-│   │   ├── observability/          # 日志、指标、追踪（可按需启用）
-│   │   └── auth/                   # 固定 token + hash 校验等基础鉴权实现
-│   └── app/                        # 应用编排层，串联 usecase/adapter/infra
-├── pkg/
-│   └── sdk/                        # Go SDK 对外公共包（如需要独立发布）
-├── migrations/                     # PostgreSQL DDL / migration 脚本
-├── test/                           # 集成测试、端到端测试、测试数据
-└── raft-stash/                     # 以子模块/子目录方式纳入的 Raft 源码
+ai-coding-training/                          # 项目根目录，放入口、文档、OpenSpec 和业务代码根基
+├── cmd/                                      # 可执行程序入口目录，按服务或命令拆分
+│   ├── config-center-api/                    # HTTP API 服务入口
+│   │   └── main.go
+│   ├── config-center-admin/                  # 管理后台服务入口
+│   │   └── main.go
+│   ├── config-center-sdk-demo/               # SDK 联调/示例入口（可选）
+│   │   └── main.go
+│   └── migrate/                              # 数据库迁移入口
+│       └── main.go
+├── internal/                                 # 项目内部业务代码，不对外暴露
+│   ├── domain/                               # 领域层，放核心业务模型、规则、事件和仓储接口
+│   │   └── configcenter/                     # 配置中心业务域的领域代码
+│   │       ├── aggregate.go
+│   │       ├── entity.go
+│   │       ├── value_object.go
+│   │       ├── repository.go
+│   │       ├── service.go
+│   │       └── event/                        # 领域事件定义
+│   │           ├── app.go
+│   │           ├── environment.go
+│   │           ├── group.go
+│   │           ├── item.go
+│   │           ├── version.go
+│   │           └── gray.go
+│   ├── application/                          # 应用层，负责用例编排、命令处理和对外输出对象
+│   │   └── configcenter/                     # 配置中心业务的应用层代码
+│   │       ├── command/                      # 命令定义
+│   │       │   ├── app.go
+│   │       │   ├── environment.go
+│   │       │   ├── group.go
+│   │       │   ├── item.go
+│   │       │   ├── version.go
+│   │       │   └── gray.go
+│   │       ├── dto/                          # 应用层 DTO
+│   │       │   ├── app.go
+│   │       │   ├── environment.go
+│   │       │   ├── group.go
+│   │       │   ├── item.go
+│   │       │   ├── version.go
+│   │       │   ├── gray.go
+│   │       │   └── event.go
+│   │       ├── ports.go
+│   │       └── usecase.go
+│   ├── adapter/                              # 适配层，负责 HTTP、存储等外部接口与内部模型之间的转换
+│   │   ├── http/                             # HTTP 入站适配层，负责接收请求并调用应用层
+│   │   │   └── configcenter/                 # 配置中心的 HTTP 接口实现
+│   │   │       ├── handler.go
+│   │   │       ├── request/                  # HTTP 请求结构
+│   │   │       │   ├── app.go
+│   │   │       │   ├── environment.go
+│   │   │       │   ├── group.go
+│   │   │       │   └── item.go
+│   │   │       └── response/                 # HTTP 响应结构
+│   │   │           ├── app.go
+│   │   │           ├── environment.go
+│   │   │           ├── group.go
+│   │   │           └── item.go
+│   │   ├── persistence/                      # 持久化出站适配层，负责数据库或其他存储实现
+│   │   │   └── configcenter/                 # 配置中心的数据持久化实现
+│   │   │       ├── repository.go
+│   │   │       └── mapper/                  # 持久化映射
+│   │   │           ├── app.go
+│   │   │           ├── environment.go
+│   │   │           ├── group.go
+│   │   │           ├── item.go
+│   │   │           └── version.go
+│   │   └── converter/                        # 对象转换层，放跨模块复用的映射逻辑
+│   │       └── configcenter/                 # 配置中心专用转换器
+│   │           └── mapper.go
+│   └── infrastructure/                       # 基础设施层，放配置加载、启动装配和技术实现细节
+│       ├── config/                           # 配置加载与配置结构定义
+│       │   └── config.go
+│       └── bootstrap/                        # 启动装配层，负责把各层依赖组装起来
+│           └── wiring.go
+├── openspec/                                 # OpenSpec 变更、规范和设计文档
+├── pkg/                                      # 可选公共包目录，当前如无独立对外发布需求可保持为空或不使用
+│   └── sdk/                                  # Go SDK 对外公共包（如需要独立发布）
+├── migrations/                               # PostgreSQL DDL / migration 脚本
+├── test/                                     # 集成测试、端到端测试、测试数据
+└── raft-stash/                               # 以子模块/子目录方式纳入的 Raft 源码
     └── src/
 ```
 

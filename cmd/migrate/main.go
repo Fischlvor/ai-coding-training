@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"ai-coding-training/internal/infra/config"
+	"ai-coding-training/internal/infrastructure/config"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
