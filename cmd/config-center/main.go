@@ -9,7 +9,7 @@ import (
 	"syscall"
 
 	appconfig "ai-coding-training/internal/infrastructure/config"
-	httpui "ai-coding-training/internal/presentation/http"
+	httpui "ai-coding-training/internal/interface/http"
 )
 
 func main() {

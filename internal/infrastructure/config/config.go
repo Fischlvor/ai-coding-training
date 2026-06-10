@@ -25,7 +25,7 @@ type LogConfig struct {
 }
 
 type HTTPConfig struct {
-	Port          int  `yaml:"port"`
+	Port           int  `yaml:"port"`
 	UsePreforkMode bool `yaml:"use_prefork_mode"`
 }
 
