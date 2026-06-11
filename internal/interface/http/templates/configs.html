@@ -9,6 +9,9 @@
     .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px; }
     .card { background: white; border: 1px solid #e2e8f0; border-radius: 18px; padding: 24px; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06); }
     .tag { display: inline-block; padding: 6px 10px; border-radius: 999px; background: #dbeafe; color: #1d4ed8; }
+    .toolbar { display: flex; gap: 12px; flex-wrap: wrap; margin: 18px 0; }
+    .btn { border: 0; border-radius: 12px; padding: 10px 14px; background: #1d4ed8; color: white; }
+    .btn.alt { background: #e2e8f0; color: #0f172a; }
     table { width: 100%; border-collapse: collapse; margin-top: 18px; }
     th, td { text-align: left; padding: 12px 10px; border-bottom: 1px solid #e2e8f0; }
     th { color: #475569; font-size: 14px; }
@@ -19,13 +22,25 @@
     <div class="card">
       <span class="tag">{{.Title}}</span>
       <h1>Configuration List</h1>
-      <p>Placeholder page for the configuration management workflow.</p>
+      <p>Core workflow entry points for query, publish, and rollback.</p>
+      <div class="toolbar">
+        <button class="btn">Publish selected</button>
+        <button class="btn alt">Rollback latest</button>
+      </div>
       <table>
         <thead>
-          <tr><th>Name</th><th>Version</th><th>Status</th></tr>
+          <tr><th>Name</th><th>Environment</th><th>Group</th><th>Version</th><th>Status</th></tr>
         </thead>
         <tbody>
-          <tr><td>example-service</td><td>v1</td><td>Draft</td></tr>
+          {{range .Configs}}
+          <tr>
+            <td>{{.Name}}</td>
+            <td>{{.Environment}}</td>
+            <td>{{.Group}}</td>
+            <td>{{.Version}}</td>
+            <td>{{.Status}}</td>
+          </tr>
+          {{end}}
         </tbody>
       </table>
     </div>
