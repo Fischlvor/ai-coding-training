@@ -1,3 +1,3 @@
 module raft-stash
 
-go 1.24.0
+go 1.24

@@ -13,7 +13,7 @@ type ClientEnd = labrpc.ClientEnd
 
 type Raft interface {
 	GetState() (int, bool)
-	Start(command interface{}) (int, int, bool)
+	Start(command any) (int, int, bool)
 	Kill()
 }
 
@@ -29,7 +29,15 @@ func (a *Adapter) GetState() (int, bool) {
 	return a.inner.GetState()
 }
 
-func (a *Adapter) Start(command interface{}) (int, int, bool) {
+func (a *Adapter) GetLeader() string {
+	_, isLeader := a.GetState()
+	if !isLeader {
+		return ""
+	}
+	return "self"
+}
+
+func (a *Adapter) Start(command any) (int, int, bool) {
 	return a.inner.Start(command)
 }
 

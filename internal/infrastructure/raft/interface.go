@@ -6,7 +6,8 @@ package raftadapter
 // design.
 type PeerFactory interface {
 	GetState() (term int, isLeader bool)
-	Start(command interface{}) (index int, term int, isLeader bool)
+	GetLeader() string
+	Start(command any) (index int, term int, isLeader bool)
 	Kill()
 }
 

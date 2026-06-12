@@ -84,28 +84,7 @@ func (c SDKClient) Subscribe(ctx context.Context, in SDKSubscribeInput) (dto.Sub
 }
 
 func (c SDKClient) RefreshCache(ctx context.Context, clientID, subscriptionID string, lastVersionNo int64) ([]dto.ChangeEventDTO, error) {
-	if err := validateID(subscriptionID, "subscription_id"); err != nil {
-		return nil, err
-	}
-	if c.SubscriptionRepo == nil {
-		return nil, fmt.Errorf("%w: subscription repository is not configured", ErrValidation)
-	}
-	sub, err := c.SubscriptionRepo.GetByID(ctx, subscriptionID)
-	if err != nil {
-		return nil, err
-	}
-	if strings.TrimSpace(clientID) != "" && sub.ClientID != clientID {
-		return nil, fmt.Errorf("%w: subscription client mismatch", ErrValidation)
-	}
-	sub.LastVersionNo = lastVersionNo
-	if _, err := c.SubscriptionRepo.Update(ctx, sub); err != nil {
-		return nil, err
-	}
-	events, err := c.ListPendingEvents(ctx, subscriptionID)
-	if err != nil {
-		return nil, err
-	}
-	return events, nil
+	return c.CompensateSubscription(ctx, clientID, subscriptionID, lastVersionNo)
 }
 
 func (c SDKClient) AckEvent(ctx context.Context, subscriptionID string, lastVersionNo int64) (dto.SubscriptionDTO, error) {
