@@ -85,6 +85,15 @@ func (s Service) RecordChangeEvent(ctx context.Context, in dto.ChangeEventDTO) (
 	if s.ChangeEvents == nil {
 		return dto.ChangeEventDTO{}, fmt.Errorf("%w: change event repository is not configured", ErrValidation)
 	}
+	if strings.TrimSpace(in.ID) != "" {
+		existing, err := s.ChangeEvents.GetByID(ctx, in.ID)
+		if err == nil && existing.ID != "" {
+			return changeEventToDTO(existing), nil
+		}
+		if err != nil && err != ErrNotFound {
+			return dto.ChangeEventDTO{}, err
+		}
+	}
 	event := entity.ChangeEvent{ID: in.ID, AppID: in.AppID, EnvironmentID: in.EnvironmentID, GroupID: in.GroupID, VersionNo: in.VersionNo, EventType: vo.ChangeEventType(in.EventType), Payload: in.Payload, CreatedAt: s.now().Unix()}
 	created, err := s.ChangeEvents.Create(ctx, event)
 	if err != nil {
@@ -119,11 +128,41 @@ func (s Service) ListPendingEvents(ctx context.Context, subscriptionID string) (
 	if err != nil {
 		return nil, err
 	}
-	out := make([]dto.ChangeEventDTO, 0, len(items))
-	for _, item := range items {
-		out = append(out, changeEventToDTO(item))
+	return uniqueChangeEvents(items), nil
+}
+
+func (s Service) CompensateSubscription(ctx context.Context, clientID, subscriptionID string, lastVersionNo int64) ([]dto.ChangeEventDTO, error) {
+	if err := validateID(subscriptionID, "subscription_id"); err != nil {
+		return nil, err
 	}
-	return out, nil
+	if lastVersionNo < 0 {
+		return nil, fmt.Errorf("%w: last_version_no must be non-negative", ErrValidation)
+	}
+	if s.SubscriptionRepo == nil {
+		return nil, fmt.Errorf("%w: subscription repository is not configured", ErrValidation)
+	}
+	if s.ChangeEvents == nil {
+		return nil, fmt.Errorf("%w: change event repository is not configured", ErrValidation)
+	}
+	sub, err := s.SubscriptionRepo.GetByID(ctx, subscriptionID)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(clientID) != "" && sub.ClientID != clientID {
+		return nil, fmt.Errorf("%w: subscription client mismatch", ErrValidation)
+	}
+	if lastVersionNo > sub.LastVersionNo {
+		sub.LastVersionNo = lastVersionNo
+		sub.UpdatedAt = s.now().Unix()
+		if _, err := s.SubscriptionRepo.Update(ctx, sub); err != nil {
+			return nil, err
+		}
+	}
+	items, err := s.ChangeEvents.ListByGroup(ctx, sub.AppID, sub.EnvironmentID, sub.GroupID, sub.LastVersionNo)
+	if err != nil {
+		return nil, err
+	}
+	return uniqueChangeEvents(items), nil
 }
 
 func (s Service) AckSubscription(ctx context.Context, subscriptionID string, lastVersionNo int64) (dto.SubscriptionDTO, error) {
@@ -152,4 +191,21 @@ func subscriptionToDTO(sub entity.Subscription) dto.SubscriptionDTO {
 
 func changeEventToDTO(ev entity.ChangeEvent) dto.ChangeEventDTO {
 	return dto.ChangeEventDTO{ID: ev.ID, AppID: ev.AppID, EnvironmentID: ev.EnvironmentID, GroupID: ev.GroupID, VersionNo: ev.VersionNo, EventType: string(ev.EventType), Payload: ev.Payload}
+}
+
+func uniqueChangeEvents(items []entity.ChangeEvent) []dto.ChangeEventDTO {
+	out := make([]dto.ChangeEventDTO, 0, len(items))
+	seen := make(map[string]struct{}, len(items))
+	for _, item := range items {
+		key := item.ID
+		if strings.TrimSpace(key) == "" {
+			key = fmt.Sprintf("%s:%s:%s:%d:%s", item.AppID, item.EnvironmentID, item.GroupID, item.VersionNo, item.EventType)
+		}
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, changeEventToDTO(item))
+	}
+	return out
 }
